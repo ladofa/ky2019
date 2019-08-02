@@ -1,0 +1,1 @@
+freeze_graph --input_meta_graph=trainOutput/lenet.ckpt.meta --input_checkpoint="trainOutput/lenet.ckpt" --input_binary=true --output_graph="trainOutput/frozen_lenet.pb" --output_node_names="output"
