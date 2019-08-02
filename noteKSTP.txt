@@ -1,0 +1,2 @@
+cd ~/19tf2onnx2caffe/tpu/models/official/efficientnet
+python3 eval_ckpt_main.py --model_name=efficientnet-b0 --ckpt_dir=/home/kpst/19tf2onnx2caffe/efficientnet-b0/ --example_img=../../../../efficientnet-b0/panda.jpg --labels_map_file=../../../../efficientnet-b0/labels_map.txt

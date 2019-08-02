@@ -1,0 +1,55 @@
+1) update & optimize tensorflow model
+cd ..
+cd cd ~/19tf2onnx2caffe/src
+python3 testTF.py
+#python3 testONNX.py
+
+2) tensorflow to onnx
+cd ~/19tf2onnx2caffe/tensorflow-onnx
+
+#install tensorflow2onnx script on machine
+sudo python3 setup.py install
+
+-------original -------------
+python3 -m tf2onnx.convert --input tfModels/mobilenet_v1_1.0_128/mobilenet_v1_1.0_128_frozen.pb --inputs input:0 --outputs MobilenetV1/Predictions/Reshape_1:0 --output onnxModels/mobilenet_v1_1.0_128.onnx --verbose
+
+cd src
+python3 testTF.py
+"optimized mobilenetv1 graph"
+-----------optimized graph---------------
+python3 -m tf2onnx.convert --input tfModels/mobilenet_v1_1.0_128/mobilenet_v1_1.0_128_frozen_final.pb --inputs input:0 --outputs MobilenetV1/Predictions/Reshape_1:0 --output onnxModels/mobilenet_v1_1.0_128.onnx --verbose
+
+"nchw"
+python3 -m tf2onnx.convert --input tfModels/mobilenet_v1_1.0_128/mobilenet_v1_1.0_128_frozen_final.pb --inputs input:0 --outputs MobilenetV1/Predictions/Reshape_1:0 --output onnxModels/mobilenet_v1_1.0_128.onnx --verbose --inputs-as-nchw input:0
+
+cd onnx2caffe
+python3 convertCaffe.py ../onnxModels/mobilenet_v1_1.0_128.onnx ../caffeModels/mobilenet_v1_1.0_128.prototxt ../caffeModels/mobilenet_v1_1.0_128.caffemodel
+""cast error""
+
+----------resnet101----------------------
+edit ../tfModels/resnet_v2_101/resnet_v2_101_299_frozen.pb graph to ../tfModels/resnet_v2_101/resnet_v2_101_299_frozen_final.pb (removed unsupported ops (Quie) in onnx)
+
+python3 -m tf2onnx.convert --input tfModels/resnet_v2_101/resnet_v2_101_299_frozen_final.pb --inputs new_input:0 --outputs import/output:0 --output onnxModels/resnet_v2_101_299.onnx --verbose --inputs-as-nchw new_input:0
+
+3) onnx to caffe conversion
+
+python3 convertCaffe.py ../onnxModels/resnet_v2_101_299.onnx ../caffeModels/resnet_v2_101_299.prototxt ../caffeModels/resnet_v2_101_299.caffemodel 1
+
+#unsupported layers
+
+Cast        [x]  #--inputs-as-nchw solves Cast
+FIFOQueueV2 [o]  #removed from tf grah
+Squeeze     [o]  #replaced with Reshape in caffe
+Mean        [o]  #tf: Mean = caffe: ReduceMean + Reshape
+ReLU6       [o]  #added ReLU6 in caffe (https://github.com/RuiminChen/Caffe-MobileNetV2-ReLU6.git)
+
+//caffe
+cp Caffe-MobileNetV2-ReLU6/relu6_layer.c* caffe/src/caffe/layers/
+cp Caffe-MobileNetV2-ReLU6/relu6_layer.hpp caffe/include/caffe/layers/
+
+##test converted caffe model
+cd src
+/usr/bin/python3 /home/kpst/19tf2onnx2caffe/src/testCaffe.py
+
+python3 -m tf2onnx.convert --input tfModels/mobilenet_v1_1.0_128/mobilenet_v1_1.0_128_frozen_final.pb --inputs input:0 --outputs MobilenetV1/Logits/SpatialSqueeze:0 --output onnxModels/mobilenet_v1_1.0_128.onnx --verbose --inputs-as-nchw input:0
+python3 convertCaffe.py ../onnxModels/mobilenet_v1_1.0_128.onnx ../caffeModels/mobilenet_v1_1.0_128.prototxt ../caffeModels/mobilenet_v1_1.0_128.caffemodel 0

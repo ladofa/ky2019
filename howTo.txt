@@ -1,0 +1,97 @@
+cd 19-tf2onnx2caffe
+mkdir tfModels
+mkdir onnxModels
+mkdir caffeModels
+
+1. git clone https://github.com/onnx/tensorflow-onnx.git
+cd tensorflow-onnx
+sudo python setup.py install
+cd ..
+
+2. download tensorflow models:
+
+https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.md
+
+save downloaded model in tfModels
+cd tfModels
+
+extract downloaded model
+ex:
+tar -xvf mobilenet_v1_1.0_224.tgz 
+
+3. convert tensorflow models into onnx model:
+
+python3 -m tf2onnx.convert --input tfModels/mobilenet_v1_1.0_224_frozen.pb  --inputs input:0 --outputs MobilenetV1/Predictions/Reshape_1:0  --output onnxModels/mobilenet_v1_1.0_224.onnx --verbose
+
+python -m tf2onnx.convert --opset 10 --fold_const --saved-model $WORK/$MODEL/saved_model --output $WORK/$MODEL.onnx
+
+python3 -m tf2onnx.convert --fold_const --opset 10 --graphdef tfModels/mobilenet_v1_1.0_224_frozen.pb --output onnxModels/mobilenet_v1_1.0_224_new.onnx --inputs input:0 --outputs MobilenetV1/Predictions/Reshape_1:0
+
+https://github.com/ganyc717/LeNet
+
+
+git clone https://github.com/MTlab/onnx2caffe.git
+
+git clone --recursive https://github.com/onnx/onnx.git
+cd onnx 
+python setup.py install
+
+cd ..
+cd onnx2caffe
+
+python3 convertCaffe.py ../onnxModels/mobilenet_v1_1.0_224.onnx ../caffeModels/mobilenetv1.prototxt ../caffeModels/mobilenetv1.caffemodel
+
+
+bazel run tensorflow/tools/graph_transforms:summarize_graph -- --in_graph=/media/kpst/3c09237f-7589-49fd-b590-2981f61b2753/19-tf2onnx2caffe/tfModels/mobilenet_v1_1.0_224_frozen.pb
+
+
+kpst@master:/media/kpst/3c09237f-7589-49fd-b590-2981f61b2753/19-tf2onnx2caffe$ python3 -m tf2onnx.convert --fold_const --opset 10 --graphdef testModels/trainOutput/lenet.pb --output onnxModels/lenet.onnx --inputs data:0 --outputs Lenet/fc9_1/Relu:0
+2019-07-04 17:57:39,420 - INFO - Using tensorflow=1.13.1, onnx=1.5.0, tf2onnx=1.5.1/0c735a
+2019-07-04 17:57:39,420 - INFO - Using opset <onnx, 10>
+2019-07-04 17:57:39,478 - INFO - 
+2019-07-04 17:57:39,482 - INFO - Optimizing ONNX model
+2019-07-04 17:57:39,500 - INFO - After optimization: Add -3 (5->2), Const +1 (11->12), Identity -3 (3->0), Reshape +1 (1->2), Transpose -10 (10->0)
+2019-07-04 17:57:39,502 - INFO - 
+2019-07-04 17:57:39,502 - INFO - Successfully converted TensorFlow model testModels/trainOutput/lenet.pb to ONNX
+2019-07-04 17:57:39,502 - INFO - ONNX model is saved at onnxModels/lenet.onnx
+
+graph tf2onnx (
+  %data:0[FLOAT, 1x28x28x1]
+) initializers (
+  %reshape__22__23[INT64, 4]
+  %Lenet/flat6_1/flatten/Reshape/shape:0[INT32, 2]
+  %Lenet/fc9/weights/read/_9__cf__9:0[FLOAT, 84x10]
+  %Lenet/fc9/biases/read/_8__cf__8:0[FLOAT, 10]
+  %Lenet/fc7/weights/read/_7__cf__7:0[FLOAT, 120x84]
+  %Lenet/fc7/biases/read/_6__cf__6:0[FLOAT, 84]
+  %Lenet/conv5/weights/read/_5__cf__5:0[FLOAT, 120x16x5x5]
+  %Lenet/conv5/biases/read/_4__cf__4:0[FLOAT, 120]
+  %Lenet/conv3/weights/read/_3__cf__3:0[FLOAT, 16x20x5x5]
+  %Lenet/conv3/biases/read/_2__cf__2:0[FLOAT, 16]
+  %Lenet/conv1/weights/read/_1__cf__1:0[FLOAT, 20x1x5x5]
+  %Lenet/conv1/biases/read/_0__cf__0:0[FLOAT, 20]
+) {
+  %Lenet/conv1_1/Conv2D__5:0 = Reshape(%data:0, %reshape__22__23)
+  %Lenet/flat6_1/flatten/Reshape__15:0 = Cast[to = 7](%Lenet/flat6_1/flatten/Reshape/shape:0)
+  %Conv__19:0 = Conv[dilations = [1, 1], kernel_shape = [5, 5], pads = [2, 2, 2, 2], strides = [1, 1]](%Lenet/conv1_1/Conv2D__5:0, %Lenet/conv1/weights/read/_1__cf__1:0, %Lenet/conv1/biases/read/_0__cf__0:0)
+  %Lenet/conv1_1/Relu:0 = Relu(%Conv__19:0)
+  %Lenet/pool2_1/MaxPool:0 = MaxPool[kernel_shape = [2, 2], strides = [2, 2]](%Lenet/conv1_1/Relu:0)
+  %Conv__20:0 = Conv[dilations = [1, 1], kernel_shape = [5, 5], strides = [1, 1]](%Lenet/pool2_1/MaxPool:0, %Lenet/conv3/weights/read/_3__cf__3:0, %Lenet/conv3/biases/read/_2__cf__2:0)
+  %Lenet/conv3_1/Relu:0 = Relu(%Conv__20:0)
+  %Lenet/pool4_1/MaxPool:0 = MaxPool[kernel_shape = [2, 2], strides = [2, 2]](%Lenet/conv3_1/Relu:0)
+  %Conv__21:0 = Conv[dilations = [1, 1], kernel_shape = [5, 5], strides = [1, 1]](%Lenet/pool4_1/MaxPool:0, %Lenet/conv5/weights/read/_5__cf__5:0, %Lenet/conv5/biases/read/_4__cf__4:0)
+  %Lenet/conv5_1/Relu:0 = Relu(%Conv__21:0)
+  %Lenet/flat6_1/flatten/Reshape:0 = Reshape(%Lenet/conv5_1/Relu:0, %Lenet/flat6_1/flatten/Reshape__15:0)
+  %Lenet/fc7_1/MatMul:0 = MatMul(%Lenet/flat6_1/flatten/Reshape:0, %Lenet/fc7/weights/read/_7__cf__7:0)
+  %Lenet/fc7_1/BiasAdd:0 = Add(%Lenet/fc7_1/MatMul:0, %Lenet/fc7/biases/read/_6__cf__6:0)
+  %Lenet/fc7_1/Relu:0 = Relu(%Lenet/fc7_1/BiasAdd:0)
+  %Lenet/fc9_1/MatMul:0 = MatMul(%Lenet/fc7_1/Relu:0, %Lenet/fc9/weights/read/_9__cf__9:0)
+  %Lenet/fc9_1/BiasAdd:0 = Add(%Lenet/fc9_1/MatMul:0, %Lenet/fc9/biases/read/_8__cf__8:0)
+  %Lenet/fc9_1/Relu:0 = Relu(%Lenet/fc9_1/BiasAdd:0)
+  return %Lenet/fc9_1/Relu:0
+}
+
+
+python3 convertCaffe.py ../onnxModels/lenet.onnx ../caffeModels/lenet.prototxt ../caffeModels/lenet.caffemodel
+
+
